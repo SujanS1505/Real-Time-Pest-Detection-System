@@ -1,4 +1,4 @@
-# Real-Time-Pest-and-Intruder-Detection-System
+# Real-Time-Pest-Detection-System
 LIBRARIES USED: Here are brief descriptions of each library:
 
 TensorFlow
