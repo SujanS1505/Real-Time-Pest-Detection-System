@@ -1,0 +1,6 @@
+tensorflow
+pillow
+wikipedia-api
+folium
+geotext
+gradio
