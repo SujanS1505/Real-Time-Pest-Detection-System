@@ -1,3 +1,4 @@
+import os
 import gradio as gr
 import tensorflow as tf
 from tensorflow.keras.utils import img_to_array
@@ -5,16 +6,13 @@ from tensorflow.keras.applications.resnet50 import ResNet50, preprocess_input, d
 from PIL import Image, ImageDraw
 import wikipediaapi
 import folium
-from geotext import GeoText  # For detecting place names
+from geotext import GeoText 
 
-# Initialize the ResNet50 model
 model = ResNet50(weights="imagenet")
 
-# Initialize Wikipedia API
 user_agent = "DynamicInsectDetectionApp/1.0 (contact@example.com)"
 wiki_wiki = wikipediaapi.Wikipedia(language='en', user_agent=user_agent)
 
-# Define more insects and their colors
 INSECT_COLORS = {
     "grasshopper": "green",
     "slug": "purple",
@@ -26,19 +24,18 @@ INSECT_COLORS = {
     "leafhopper": "pink",
     "earthworm": "teal",
     "spider": "black",
-    "butterfly": "red",         # New insect
-    "dragonfly": "blue",        # New insect
-    "cockroach": "gray",        # New insect
-    "mosquito": "lightblue",    # New insect
-    "termite": "darkyellow",    # New insect
-    "fly": "purple",            # New insect
-    "moth": "white",            # New insect
-    "locust": "darkgreen",      # New insect
-    "tick": "darkbrown",        # New insect
-    "wasp": "yelloworange",     # New insect
+    "butterfly": "red",        
+    "dragonfly": "blue",        
+    "cockroach": "gray",        
+    "mosquito": "lightblue",    
+    "termite": "darkyellow",   
+    "fly": "purple",            
+    "moth": "white",            
+    "locust": "darkgreen",      
+    "tick": "darkbrown",        
+    "wasp": "yelloworange",     
 }
 
-# Global variable to store locations across multiple images
 all_locations = {}
 
 def detect_insect_with_tensorflow(img):
@@ -49,7 +46,7 @@ def detect_insect_with_tensorflow(img):
     img_array = img_array[None, ...]
     preds = model.predict(img_array)
     decoded_preds = decode_predictions(preds, top=1)[0]
-    return decoded_preds[0][1]  # Return top prediction insect name
+    return decoded_preds[0][1]  
 
 def fetch_insect_info_and_places(insect_name):
     """Fetches insect information, eradication methods, pesticides, and frequent places."""
@@ -65,17 +62,15 @@ def fetch_insect_info_and_places(insect_name):
         return "\n".join(
             [line.strip() for line in full_info.splitlines() if any(k in line.lower() for k in keywords)]
         ) or "No specific information found."
-
-    # Extract eradication methods and pesticide information
+    
     eradication_methods = extract_relevant_content(eradication_keywords)
     pesticides_used = extract_relevant_content(pesticide_keywords)
 
-    # Extract places using GeoText
     places_detected = GeoText(full_info)
     countries = places_detected.countries
     cities = places_detected.cities
-    all_places = set(countries + cities)  # Combine countries and cities
-    place_list = list(all_places)  # Convert to a list for mapping purposes
+    all_places = set(countries + cities)  
+    place_list = list(all_places)  
 
     result = f"**Full Information about {insect_name}:**\n\n{full_info}\n\n"
     result += f"**Eradication Methods and Solutions:**\n{eradication_methods}\n\n"
@@ -99,12 +94,10 @@ def generate_map(locations):
     """Generates an interactive map with insect detection locations."""
     folium_map = folium.Map(location=[0, 0], zoom_start=2)
 
-    # Loop through all locations and add markers for each insect detected
     for insect_name, locs in locations.items():
         color = INSECT_COLORS.get(insect_name.lower(), "gray")
         for loc in locs:
-            # Ensure valid coordinates for each place
-            if loc != [0, 0]:  # Skip default invalid coordinates
+            if loc != [0, 0]:  
                 folium.Marker(
                     location=loc,
                     popup=f"{insect_name} detected here",
@@ -152,7 +145,6 @@ def get_coordinates_for_places(places):
         "Nigeria": [9.0820, 8.6753],
         "Bangladesh": [23.685, 90.3563],
         "Indonesia": [-0.7893, 113.9213],
-        # New Coordinates
         "New Zealand": [-40.9006, 174.8860],
         "Sweden": [60.1282, 18.6435],
         "Norway": [60.4720, 8.4689],
@@ -186,7 +178,6 @@ def process_single_image(img):
     img_with_box = highlight_insect_on_image(img, insect_name)
     locations = {insect_name: get_coordinates_for_places(places)}
 
-    # Add new locations to the global all_locations variable
     for insect_name, locs in locations.items():
         if insect_name not in all_locations:
             all_locations[insect_name] = locs
@@ -208,11 +199,10 @@ def process_multiple_images(img1, img2, img3):
             results.append("No image uploaded.")
             images_with_boxes.append(None)
 
-    # Generate map after processing all images, using accumulated locations
     folium_map_html = generate_map(all_locations)
     return (*results, *images_with_boxes, folium_map_html)
 
-# Gradio Interface
+
 iface = gr.Interface(
     fn=process_multiple_images,
     inputs=[
@@ -232,4 +222,10 @@ iface = gr.Interface(
     live=True,
 )
 
-iface.launch()
+def running_in_docker():
+    return os.path.exists('/.dockerenv')
+
+if running_in_docker():
+    iface.launch(server_name="0.0.0.0", server_port=7860)
+else:
+    iface.launch()
